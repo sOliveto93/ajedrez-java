@@ -39,31 +39,43 @@ public class Peon extends Pieza {
 	}
 
 	public boolean puedeMover(int filaDestino, int colDestino) {
-		int direccion = (color == Color.white) ? -1 : 1;
-		int filaActual = this.fila;
-		int colActual = this.columna;
+    int dir = (color == Color.white) ? -1 : 1;
+    int filaActual = this.fila;
+    int colActual = this.columna;
+    Casilla[][] casillas = tablero.getCasillas();
 
-		if (colActual == colDestino && filaDestino == filaActual + direccion) {
-			// si esta ocupada no podemos mover esta de frente
-			return !tablero.getCasillas()[filaDestino][colDestino].isOcupada();
-		}
-		// Movimiento vertical doble desde fila inicial
-		int filaInicial = (color == Color.white) ? 6 : 1;
+    // Movimiento hacia adelante simple
+    if (colActual == colDestino && filaDestino == filaActual + dir) {
+        return !casillas[filaDestino][colDestino].isOcupada();
+    }
 
-		if (colActual == colDestino && filaActual == filaInicial && filaDestino == filaActual + 2 * direccion) {
-			// si estamos en la casilla inicial verificamos si esta ocupada las casillas
-			return !tablero.getCasillas()[filaActual + direccion][colDestino].isOcupada() // casilla intermedia vacía
-					&& !tablero.getCasillas()[filaDestino][colDestino].isOcupada();
-		}
-		// Captura diagonal
-		if (Math.abs(colDestino - colActual) == 1 && filaDestino == filaActual + direccion) {
-			return tablero.getCasillas()[filaDestino][colDestino].isOcupada()
-					&& tablero.getCasillas()[filaDestino][colDestino].getPieza().getColor() != this.color;
-		}
-		// para cualquier otro movimiento false
-		return false;
+    // Movimiento doble desde fila inicial
+    int filaInicial = (color == Color.white) ? 6 : 1;
+    if (colActual == colDestino && filaActual == filaInicial && filaDestino == filaActual + 2 * dir) {
+        return !casillas[filaActual + dir][colDestino].isOcupada()
+            && !casillas[filaDestino][colDestino].isOcupada();
+    }
 
-	}
+    // Captura diagonal normal o al paso
+    if (Math.abs(colDestino - colActual) == 1 && filaDestino == filaActual + dir) {
+        // Captura normal
+        if (casillas[filaDestino][colDestino].isOcupada()
+            && casillas[filaDestino][colDestino].getPieza().getColor() != color) {
+            return true;
+        }
+
+        // Captura al paso
+        Peon peonPaso = tablero.getPeonConDerechoAlPaso();
+        if (peonPaso != null
+            && peonPaso.getFila() == filaActual
+            && peonPaso.getColumna() == colDestino) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 
 	@Override
 	public void actualizarCasillasControladas() {
@@ -78,5 +90,5 @@ public class Peon extends Pieza {
 				casillasControladas.add(indice(filaCaptura, columna + 1));
 		}
 	}
-
+	
 }

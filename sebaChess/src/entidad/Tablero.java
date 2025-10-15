@@ -8,6 +8,7 @@ import java.util.List;
 public class Tablero {
 	private Casilla[][] casillas;
 	private List<Pieza> piezas;
+	private Peon peonConDerechoAlPaso = null;
 
 	public Tablero() {
 		casillas = new Casilla[8][8];
@@ -130,60 +131,90 @@ public class Tablero {
 	}
 
 	public boolean moverPieza(Pieza pieza, int filaDestino, int colDestino) {
-		
-		if (pieza == null)
-			return false;
-		
-		if (filaDestino < 0 || filaDestino >= 8 || colDestino < 0 || colDestino >= 8)
-			return false;
-		//si es un rey intentando un enroque?
-		if (pieza instanceof Rey && Math.abs(colDestino - pieza.getColumna()) == 2) {
-        	Rey rey = (Rey) pieza;
+    if (pieza == null)
+        return false;
 
-        	if (rey.puedeEnrocar(colDestino)) {
-            	realizarEnroque(rey, colDestino);
-            	return true; // enroque realizado
-        	} 
-    	}
-		// polimorfismo
-		if (!pieza.puedeMover(filaDestino, colDestino))
-			return false;
-		
-		
+    if (filaDestino < 0 || filaDestino >= 8 || colDestino < 0 || colDestino >= 8)
+        return false;
 
-		// Guardamos estado
-		Casilla origen = casillas[pieza.getFila()][pieza.getColumna()];
-		Casilla destino = casillas[filaDestino][colDestino];
-		Pieza piezaCapturada = destino.getPieza();
+    // Enroque
+    if (pieza instanceof Rey && Math.abs(colDestino - pieza.getColumna()) == 2) {
+        Rey rey = (Rey) pieza;
+        if (rey.puedeEnrocar(colDestino)) {
+            realizarEnroque(rey, colDestino);
+            return true;
+        }
+    }
 
-		int filaOriginal = pieza.getFila();
-		int colOriginal = pieza.getColumna();
+    if (!pieza.puedeMover(filaDestino, colDestino))
+        return false;
 
-		
-		// temporal
-		pieza.setFila(filaDestino);
-		pieza.setColumna(colDestino);
+    Casilla origen = casillas[pieza.getFila()][pieza.getColumna()];
+    Casilla destino = casillas[filaDestino][colDestino];
+    Pieza piezaCapturada = destino.getPieza();
 
-		boolean jaque = estaEnJaque(pieza.getColor());
+    int filaOriginal = pieza.getFila();
+    int colOriginal = pieza.getColumna();
 
-		// Revertimos simulación
-		pieza.setFila(filaOriginal);
-		pieza.setColumna(colOriginal);
+    // Simular movimiento para verificar jaque
+    pieza.setFila(filaDestino);
+    pieza.setColumna(colDestino);
+    boolean jaque = estaEnJaque(pieza.getColor());
+    pieza.setFila(filaOriginal);
+    pieza.setColumna(colOriginal);
+    if (jaque)
+        return false;
 
-		if (jaque)
-			return false;
+    // peon al paso
+    if (pieza instanceof Peon peon) {
+       
+        if (peonConDerechoAlPaso != null) {
 
-		// Confirmamos movimiento real
-		origen.liberarCasilla();
-		if (piezaCapturada != null) {
-			piezas.remove(piezaCapturada);
-		}
-		destino.setPieza(pieza);
-		pieza.setFila(filaDestino);
-		pieza.setColumna(colDestino);
+            if (Math.abs(peon.getColumna() - peonConDerechoAlPaso.getColumna()) == 1 &&
+                peon.getFila() == peonConDerechoAlPaso.getFila()) {
+                
+                int dir = (peon.getColor() == Color.white) ? -1 : 1;
+                if (filaDestino == peon.getFila() + dir && colDestino == peonConDerechoAlPaso.getColumna()) {
+                    
+                    casillas[peonConDerechoAlPaso.getFila()][peonConDerechoAlPaso.getColumna()].liberarCasilla();
+                    piezas.remove(peonConDerechoAlPaso);
 
-		return true;
-	}
+                    origen.liberarCasilla();
+                    destino.setPieza(peon);
+                    peon.setFila(filaDestino);
+                    peon.setColumna(colDestino);
+
+                    peonConDerechoAlPaso = null;
+                    return true;
+                }
+            }
+        }
+
+      //siempre que movemos 2 al peon activamos la posibilidad de derecho al paso
+        int dir = (peon.getColor() == Color.white) ? -1 : 1;
+        int filaInicial = (peon.getColor() == Color.white) ? 6 : 1;
+        if (filaOriginal == filaInicial && filaDestino == filaInicial + 2 * dir) {
+            peonConDerechoAlPaso = peon;
+        } else {
+            peonConDerechoAlPaso = null;
+        }
+    } else {
+        peonConDerechoAlPaso = null;
+    }
+
+    // Movimiento normal
+    origen.liberarCasilla();
+    if (piezaCapturada != null)
+        piezas.remove(piezaCapturada);
+
+    destino.setPieza(pieza);
+    pieza.setFila(filaDestino);
+    pieza.setColumna(colDestino);
+
+    return true;
+}
+
+
 
 	public boolean estaEnJaque(Color colorRey) {
 		Rey rey = null;
@@ -268,4 +299,8 @@ public class Tablero {
 	public List<Pieza> getPiezas() {
 		return this.piezas;
 	}
+
+   public Peon getPeonConDerechoAlPaso() {
+    return peonConDerechoAlPaso;
+}
 }
